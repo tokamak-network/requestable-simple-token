@@ -35,33 +35,6 @@ contract RequestableSimpleToken is Ownable {
     emit Transfer(0x00, _to, _value);
   }
 
-  // make an enter request for `owner` variable.
-  function enterOwner() external returns (bool) {
-    require(msg.sender == owner);
-
-    // TODO: adpot RootChain
-    // require(rootchain.makeEnterRequest(msg.sender, bytes32(0), owner));
-    require(applyRequestInRootChain(true, 0, msg.sender, bytes32(0), bytes32(owner)));
-
-    return true;
-  }
-
-  // make an enter request for `balances[msg.sender]`.
-  // If user know trieKey, one can call `rootchain.enter` directly.
-  function enterBalance(uint amount) external returns (bool) {
-    // it is also checked in applyRequestInRootChain
-    require(balances[msg.sender] >= amount);
-
-    bytes32 trieKey = keccak256(bytes32(msg.sender), bytes32(2));
-
-    // this subtracts `balances[msg.sender]` by `amount`
-    // TODO: adpot RootChain
-    // require(rootchain.makeEnterRequest(msg.sender, trieKey, amount);
-    require(applyRequestInRootChain(true, 0, msg.sender, trieKey, bytes32(amount)));
-
-    return true;
-  }
-
   // User can get the trie key of one's balance and make an enter request directly.
   function getBalanceTrieKey(address who) public pure returns (bytes32) {
     return keccak256(bytes32(who), bytes32(2));
