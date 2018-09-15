@@ -113,7 +113,7 @@ contract("RequestableSimpleToken", (accounts) => {
         (await token.balances(holder)).should.be.bignumber.equal(0);
       });
 
-      it("balance should be updated", async () => {
+      it("balance in child chain should be updated", async () => {
         const e = await expectEvent.inTransaction(
           token.applyRequestInChildChain(isExit, 0, holder, trieKey, trieValue),
           "Request",
@@ -146,7 +146,7 @@ contract("RequestableSimpleToken", (accounts) => {
         (await token.balances(holder)).should.be.bignumber.equal(0);
       });
 
-      it("balance should be updated", async () => {
+      it("balance in root chain should be updated", async () => {
         const e = await expectEvent.inTransaction(
           token.applyRequestInRootChain(isExit, 0, holder, trieKey, trieValue),
           "Request",
