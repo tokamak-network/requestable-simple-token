@@ -82,4 +82,78 @@ contract("RequestableSimpleToken", (accounts) => {
       });
     });
   });
+
+  describe("request on balances", () => {
+    let trieKey;
+    const trieValue = padLeft(tokenAmount);
+
+    before(async () => {
+      trieKey = await token.getBalanceTrieKey(holder);
+    });
+
+    describe("#Enter", () => {
+      const isExit = false;
+
+      it("cannot make an enter request over his balance", async () => {
+        const overTokenAmount = 1e19;
+
+        const overTrieValue = padLeft(overTokenAmount);
+
+        await expectThrow(
+          token.applyRequestInRootChain(isExit, 0, holder, trieKey, overTrieValue),
+        );
+      });
+
+      it("can make an enter request", async () => {
+        const e = await expectEvent.inTransaction(
+          token.applyRequestInRootChain(isExit, 0, holder, trieKey, trieValue),
+          "Request",
+        );
+
+        (await token.balances(holder)).should.be.bignumber.equal(0);
+      });
+
+      it("balance should be updated", async () => {
+        const e = await expectEvent.inTransaction(
+          token.applyRequestInChildChain(isExit, 0, holder, trieKey, trieValue),
+          "Request",
+        );
+
+        (await token.balances(holder)).should.be.bignumber.equal(tokenAmount);
+        // don't need to restore balance
+      });
+    });
+
+    describe("#Exit", () => {
+      const isExit = true;
+
+      it("cannot make an exit request over his balance", async () => {
+        const overTokenAmount = 1e19;
+
+        const overTrieValue = padLeft(overTokenAmount);
+
+        await expectThrow(
+          token.applyRequestInChildChain(isExit, 0, holder, trieKey, overTrieValue),
+        );
+      });
+
+      it("can make an exit request", async () => {
+        const e = await expectEvent.inTransaction(
+          token.applyRequestInChildChain(isExit, 0, holder, trieKey, trieValue),
+          "Request",
+        );
+
+        (await token.balances(holder)).should.be.bignumber.equal(0);
+      });
+
+      it("balance should be updated", async () => {
+        const e = await expectEvent.inTransaction(
+          token.applyRequestInRootChain(isExit, 0, holder, trieKey, trieValue),
+          "Request",
+        );
+
+        (await token.balances(holder)).should.be.bignumber.equal(tokenAmount);
+      });
+    });
+  });
 });

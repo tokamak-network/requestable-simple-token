@@ -10,10 +10,10 @@ contract RequestableSimpleToken is Ownable {
   // address owner; from Ownable
 
   // `totalSupply` is stored at bytes32(1).
-  uint totalSupply;
+  uint public totalSupply;
 
   // `balances[addr]` is stored at keccak256(bytes32(addr), bytes32(2)).
-  mapping(address => uint) balances;
+  mapping(address => uint) public balances;
 
   /* Events */
   event Transfer(address _from, address _to, uint _value);
