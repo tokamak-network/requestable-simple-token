@@ -1,5 +1,5 @@
-const RequestableSimpleToken = artifacts.require("./RequestableSimpleToken.sol");
+const RequestableSimpleTokenNoOwner = artifacts.require("./RequestableSimpleTokenWithNoOwnership.sol");
 
 module.exports = function(deployer) {
-  deployer.deploy(RequestableSimpleToken);
+  deployer.deploy(RequestableSimpleTokenNoOwner);
 };
