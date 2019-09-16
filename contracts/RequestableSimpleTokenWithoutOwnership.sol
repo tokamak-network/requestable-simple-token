@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.8;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./RequestableI.sol";
@@ -15,6 +15,10 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
 
   // requests
   mapping(uint => bool) appliedRequests;
+
+  bytes32 constant public KEY_OWNER         = 0x0000000000000000000000000000000000000000000000000000000000000000;
+  bytes32 constant public PERFIX_BALANCES   = 0x0000000000000000000000000000000000000000000000000000000000000002;
+
 
   /* Events */
   event Transfer(address _from, address _to, uint _value);
@@ -33,12 +37,12 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
     balances[_to] = balances[_to].add(_value);
 
     emit Mint(_to, _value);
-    emit Transfer(0x00, _to, _value);
+    emit Transfer(address(0), _to, _value);
   }
 
   // User can get the trie key of one's balance and make an enter request directly.
   function getBalanceTrieKey(address who) public pure returns (bytes32) {
-    return keccak256(bytes32(who), bytes32(1));
+    return keccak256(abi.encodePacked(bytes32(bytes20(who)), PERFIX_BALANCES));
   }
 
   function applyRequestInRootChain(
@@ -46,23 +50,17 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
     uint256 requestId,
     address requestor,
     bytes32 trieKey,
-    bytes trieValue
+    bytes calldata trieValue
   ) external returns (bool success) {
     // TODO: adpot RootChain
     // require(msg.sender == address(rootchain));
-    // require(!getRequestApplied(requestId)); // check double applying
 
     require(!appliedRequests[requestId]);
 
     if (isExit) {
-      // exit must be finalized.
-      // TODO: adpot RootChain
-      // require(rootchain.getExitFinalized(requestId));
-
-      if (bytes32(0) == trieKey) {
-        // no one can exit `totalSupply` variable.
-        // but do nothing to return true.
-      } else if (keccak256(bytes32(requestor), bytes32(1)) == trieKey) {
+      if (KEY_OWNER == trieKey) {
+        revert();
+      } else if (getBalanceTrieKey(requestor) == trieKey) {
         // this checks trie key equals to `balances[requestor]`.
         // only token holder can exit one's token.
         // exiting means moving tokens from child chain to root chain.
@@ -73,10 +71,9 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
       }
     } else {
       // apply enter
-      if (bytes32(0) == trieKey) {
-        // no one can enter `totalSupply` variable.
+      if (KEY_OWNER == trieKey) {
         revert();
-      } else if (keccak256(bytes32(requestor), bytes32(1)) == trieKey) {
+      } else if (getBalanceTrieKey(requestor) == trieKey) {
         // this checks trie key equals to `balances[requestor]`.
         // only token holder can enter one's token.
         // entering means moving tokens from root chain to child chain.
@@ -97,15 +94,6 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
     return true;
   }
 
-
-  function decodeTrieValue(bytes memory trieValue) public pure returns (uint v) {
-    require(trieValue.length == 0x20);
-
-    assembly {
-       v := mload(add(trieValue, 0x20))
-    }
-  }
-
   // this is only called by NULL_ADDRESS in child chain
   // when i) exitRequest is initialized by startExit() or
   //     ii) enterRequest is initialized
@@ -114,17 +102,16 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
     uint256 requestId,
     address requestor,
     bytes32 trieKey,
-    bytes trieValue
+    bytes calldata trieValue
   ) external returns (bool success) {
     // TODO: adpot child chain
     // require(msg.sender == NULL_ADDRESS);
     require(!appliedRequests[requestId]);
 
     if (isExit) {
-      if (bytes32(0) == trieKey) {
-        // no one can exit `totalSupply` variable.
+      if (KEY_OWNER == trieKey) {
         revert();
-      } else if (keccak256(bytes32(requestor), bytes32(1)) == trieKey) {
+      } else if (getBalanceTrieKey(requestor) == trieKey) {
         // this checks trie key equals to `balances[tokenHolder]`.
         // only token holder can exit one's token.
         // exiting means moving tokens from child chain to root chain.
@@ -137,9 +124,9 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
         revert();
       }
     } else { // apply enter
-      if (bytes32(0) == trieKey) {
-        // no one can enter `totalSupply` variable.
-      } else if (keccak256(bytes32(requestor), bytes32(1)) == trieKey) {
+      if (KEY_OWNER == trieKey) {
+        revert();
+      } else if (getBalanceTrieKey(requestor) == trieKey) {
         // this checks trie key equals to `balances[tokenHolder]`.
         // only token holder can enter one's token.
         // entering means moving tokens from root chain to child chain.
@@ -156,5 +143,11 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
     return true;
   }
 
+  function decodeTrieValue(bytes memory trieValue) public pure returns (uint v) {
+    require(trieValue.length == 0x20);
 
+    assembly {
+       v := mload(add(trieValue, 0x20))
+    }
+  }
 }

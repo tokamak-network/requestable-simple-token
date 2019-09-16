@@ -1,13 +1,14 @@
-const expectEvent = require("openzeppelin-solidity/test/helpers/expectEvent");
-const {expectThrow} = require("openzeppelin-solidity/test/helpers/expectThrow");
+const {expectEvent, expectRevert} = require("openzeppelin-test-helpers");
+const chai = require('chai');
 const {padLeft, padRight} = require("./helpers/pad");
 
 const RequestableSimpleToken = artifacts.require("./RequestableSimpleToken.sol");
 
-require('chai')
-  .use(require('chai-bignumber')(web3.BigNumber))
-  .should();
+chai.use(require('chai-bn')(web3.utils.BN));
 
+const { expect } = chai;
+
+const toBN = web3.utils.toBN;
 
 contract("RequestableSimpleToken", (accounts) => {
   const [
@@ -17,43 +18,48 @@ contract("RequestableSimpleToken", (accounts) => {
     other,
   ] = accounts;
 
-  const tokenAmount = 1e18;
+  const tokenAmount = toBN(1e18);
   let requestId = 0;
 
   let token;
 
+  let KEY_OWNER;
+  let KEY_TOTAL_SUPPLY;
+
   before(async () => {
     token = await RequestableSimpleToken.deployed();
+
+    KEY_OWNER = await token.KEY_OWNER();
+    KEY_TOTAL_SUPPLY = await token.KEY_TOTAL_SUPPLY();
 
     await token.mint(holder, tokenAmount);
   });
 
   describe("request on owner", () => {
-    const trieKey = padLeft("0x00");
     const trieValue = padRight(owner);
 
     describe("#Enter", () => {
       const isExit = false;
 
       it("only owner in root chain can make an enter request", async () => {
-        await expectThrow(
-          token.applyRequestInRootChain(isExit, requestId++, other, trieKey, trieValue)
+        await expectRevert.unspecified(
+          token.applyRequestInRootChain(isExit, requestId++, other, KEY_OWNER, trieValue)
         );
 
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInRootChain(isExit, requestId++, owner, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInRootChain(isExit, requestId++, owner, KEY_OWNER, trieValue)).logs,
           "Requested",
         );
       });
 
       it("owner in child chain should be updated", async () => {
         const trieValue = padRight(nextOwner);
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInChildChain(isExit, requestId++, nextOwner, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInChildChain(isExit, requestId++, nextOwner, KEY_OWNER, trieValue)).logs,
           "Requested",
         );
 
-        (await token.owner()).should.be.equal(nextOwner);
+        expect(await token.owner()).to.be.equal(nextOwner);
       });
 
       after(async () => {
@@ -67,19 +73,19 @@ contract("RequestableSimpleToken", (accounts) => {
 
       it("only owner in child chain can make a exit request", async () => {
         const trieValue = padRight(nextOwner);
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInChildChain(isExit, requestId++, owner, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInChildChain(isExit, requestId++, owner, KEY_OWNER, trieValue)).logs,
           "Requested",
         );
       });
 
       it("owner in root chain should be updated", async () => {
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInRootChain(isExit, requestId++, nextOwner, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInRootChain(isExit, requestId++, nextOwner, KEY_OWNER, trieValue)).logs,
           "Requested",
         );
 
-        (await token.owner()).should.be.equal(nextOwner);
+        expect(await token.owner()).to.be.equal(nextOwner);
       });
     });
   });
@@ -96,31 +102,30 @@ contract("RequestableSimpleToken", (accounts) => {
       const isExit = false;
 
       it("cannot make an enter request over his balance", async () => {
-        const overTokenAmount = 1e19;
-
+        const overTokenAmount = toBN(1e19);
         const overTrieValue = padLeft(overTokenAmount);
 
-        await expectThrow(
+        await expectRevert.unspecified(
           token.applyRequestInRootChain(isExit, requestId++, holder, trieKey, overTrieValue),
         );
       });
 
       it("can make an enter request", async () => {
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInRootChain(isExit, requestId++, holder, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInRootChain(isExit, requestId++, holder, trieKey, trieValue)).logs,
           "Requested",
         );
 
-        (await token.balances(holder)).should.be.bignumber.equal(0);
+        expect(await token.balances(holder)).to.be.bignumber.equal(toBN(0));
       });
 
       it("balance in child chain should be updated", async () => {
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInChildChain(isExit, requestId++, holder, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInChildChain(isExit, requestId++, holder, trieKey, trieValue)).logs,
           "Requested",
         );
 
-        (await token.balances(holder)).should.be.bignumber.equal(tokenAmount);
+        expect(await token.balances(holder)).to.be.bignumber.equal(tokenAmount);
         // don't need to restore balance
       });
     });
@@ -133,27 +138,27 @@ contract("RequestableSimpleToken", (accounts) => {
 
         const overTrieValue = padLeft(overTokenAmount);
 
-        await expectThrow(
+        await expectRevert.unspecified(
           token.applyRequestInChildChain(isExit, requestId++, holder, trieKey, overTrieValue),
         );
       });
 
       it("can make an exit request", async () => {
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInChildChain(isExit, requestId++, holder, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInChildChain(isExit, requestId++, holder, trieKey, trieValue)).logs,
           "Requested",
         );
 
-        (await token.balances(holder)).should.be.bignumber.equal(0);
+        expect(await token.balances(holder)).to.be.bignumber.equal(toBN(0));
       });
 
       it("balance in root chain should be updated", async () => {
-        const e = await expectEvent.inTransaction(
-          token.applyRequestInRootChain(isExit, requestId++, holder, trieKey, trieValue),
+        const e = await expectEvent.inLogs(
+          (await token.applyRequestInRootChain(isExit, requestId++, holder, trieKey, trieValue)).logs,
           "Requested",
         );
 
-        (await token.balances(holder)).should.be.bignumber.equal(tokenAmount);
+        expect(await token.balances(holder)).to.be.bignumber.equal(tokenAmount);
       });
     });
   });
