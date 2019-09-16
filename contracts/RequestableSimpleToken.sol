@@ -23,7 +23,7 @@ contract RequestableSimpleToken is Ownable, RequestableI {
   /* Events */
   event Transfer(address _from, address _to, uint _value);
   event Mint(address _to, uint _value);
-  event Request(bool _isExit, address _requestor, bytes32 _trieKey, bytes _trieValue);
+  event Requested(bool _isExit, address _requestor, bytes32 _trieKey, bytes _trieValue);
 
   function transfer(address _to, uint _value) public {
     balances[msg.sender] = balances[msg.sender].sub(_value);
@@ -104,20 +104,11 @@ contract RequestableSimpleToken is Ownable, RequestableI {
 
     appliedRequests[requestId] = true;
 
-    emit Request(isExit, requestor, trieKey, trieValue);
+    emit Requested(isExit, requestor, trieKey, trieValue);
 
     // TODO: adpot RootChain
     // setRequestApplied(requestId);
     return true;
-  }
-
-
-  function decodeTrieValue(bytes memory trieValue) public pure returns (uint v) {
-    require(trieValue.length == 0x20);
-
-    assembly {
-       v := mload(add(trieValue, 0x20))
-    }
   }
 
   // this is only called by NULL_ADDRESS in child chain
@@ -176,9 +167,15 @@ contract RequestableSimpleToken is Ownable, RequestableI {
 
     appliedRequests[requestId] = true;
 
-    emit Request(isExit, requestor, trieKey, trieValue);
+    emit Requested(isExit, requestor, trieKey, trieValue);
     return true;
   }
 
+  function decodeTrieValue(bytes memory trieValue) public pure returns (uint v) {
+    require(trieValue.length == 0x20);
 
+    assembly {
+       v := mload(add(trieValue, 0x20))
+    }
+  }
 }

@@ -19,7 +19,7 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
   /* Events */
   event Transfer(address _from, address _to, uint _value);
   event Mint(address _to, uint _value);
-  event Request(bool _isExit, address _requestor, bytes32 _trieKey, bytes _trieValue);
+  event Requested(bool _isExit, address _requestor, bytes32 _trieKey, bytes _trieValue);
 
   function transfer(address _to, uint _value) public {
     balances[msg.sender] = balances[msg.sender].sub(_value);
@@ -90,7 +90,7 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
 
     appliedRequests[requestId] = true;
 
-    emit Request(isExit, requestor, trieKey, trieValue);
+    emit Requested(isExit, requestor, trieKey, trieValue);
 
     // TODO: adpot RootChain
     // setRequestApplied(requestId);
@@ -152,7 +152,7 @@ contract RequestableSimpleTokenWithoutOwnership is RequestableI {
 
     appliedRequests[requestId] = true;
 
-    emit Request(isExit, requestor, trieKey, trieValue);
+    emit Requested(isExit, requestor, trieKey, trieValue);
     return true;
   }
 
