@@ -1,7 +1,7 @@
 pragma solidity ^0.5.8;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./Ownable.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./RequestableI.sol";
 
 
@@ -68,7 +68,6 @@ contract RequestableSimpleToken is Ownable, RequestableI {
 
         // set requestor as owner in root chain.
         _transferOwnership(requestor);
-        owner = requestor;
       } else if (KEY_TOTAL_SUPPLY == trieKey) {
         // no one can exit `totalSupply` variable.
         // but do nothing to return true.
@@ -85,7 +84,7 @@ contract RequestableSimpleToken is Ownable, RequestableI {
       // apply enter
       if (KEY_OWNER == trieKey) {
         // only owner (in root chain) can enter `owner` variable.
-        require(owner == requestor);
+        require(owner() == requestor);
         // do nothing in root chain
       } else if (KEY_TOTAL_SUPPLY == trieKey) {
         // no one can enter `totalSupply` variable.
@@ -128,7 +127,7 @@ contract RequestableSimpleToken is Ownable, RequestableI {
     if (isExit) {
       if (KEY_OWNER == trieKey) {
         // only owner (in child chain) can exit `owner` variable.
-        require(requestor == owner);
+        require(owner() == requestor);
 
         // do nothing when exit `owner` in child chain
       } else if (KEY_TOTAL_SUPPLY == trieKey) {
@@ -151,7 +150,7 @@ contract RequestableSimpleToken is Ownable, RequestableI {
         // only owner (in root chain) can make enterRequest of `owner` variable.
         // but it is checked in applyRequestInRootChain.
 
-        owner = requestor;
+        _transferOwnership(requestor);
       } else if (KEY_TOTAL_SUPPLY == trieKey) {
         // no one can enter `totalSupply` variable.
       } else if (getBalanceTrieKey(requestor) == trieKey) {
